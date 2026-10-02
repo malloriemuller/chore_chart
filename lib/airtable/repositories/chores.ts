@@ -1,6 +1,6 @@
 import type { Chore } from "../../domain/types";
 import { cached, invalidate } from "../cache";
-import { createRecords, listAllRecords, updateRecords } from "../client";
+import { createRecords, deleteRecords, listAllRecords, updateRecords } from "../client";
 import { choreToDomain, choreToFields, type ChoreFields } from "../mappers";
 
 const TABLE = "Chores";
@@ -38,4 +38,14 @@ export async function updateChore(id: string, patch: Partial<Chore>): Promise<Ch
 
 export async function archiveChore(id: string): Promise<Chore> {
   return updateChore(id, { archived: true });
+}
+
+/**
+ * Removes the chore template for good. Past Completions are deliberately left alone: their
+ * StarsAwarded is what a balance is built from, so deleting them would claw back stars a kid
+ * already earned. An orphaned Completion degrades to the title "Chore" in the stars ledger.
+ */
+export async function deleteChore(id: string): Promise<void> {
+  await deleteRecords(TABLE, [id]);
+  invalidate(TABLE);
 }

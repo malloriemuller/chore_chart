@@ -86,7 +86,16 @@ function dailyOccurrences(chore: Chore, rangeStart: string, rangeEnd: string): s
   const results: string[] = [];
   if (loopStart > loopEnd) return results;
 
+  // An empty (or absent) DaysOfWeek means every day; otherwise the every-N-days sequence is
+  // filtered down to the chosen weekdays, so "daily on weekdays" skips the weekend instead of
+  // shifting onto it.
+  const dayIndices =
+    chore.daysOfWeek && chore.daysOfWeek.length > 0
+      ? new Set(chore.daysOfWeek.map((d) => WEEKDAY_CODES.indexOf(d)))
+      : null;
+
   for (let d = loopStart; d <= loopEnd; d = addCalendarDays(d, 1)) {
+    if (dayIndices && !dayIndices.has(d.getDay())) continue;
     const diff = diffInCalendarDays(d, start);
     if (diff >= 0 && diff % interval === 0) {
       results.push(formatLocalDate(d));

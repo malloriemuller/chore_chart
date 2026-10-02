@@ -5,6 +5,7 @@ import { getNextOccurrences } from "@/lib/domain/occurrences";
 import type { Chore, DayOfWeek, Frequency, Profile, RepeatMode, TimeOfDay } from "@/lib/domain/types";
 
 const DAYS: DayOfWeek[] = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+const WEEKDAYS: DayOfWeek[] = ["MO", "TU", "WE", "TH", "FR"];
 
 export type ChoreFormValues = Omit<Chore, "id" | "archived" | "nextDueDate">;
 
@@ -35,6 +36,9 @@ export function ChoreForm({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Monthly recurrences pick a day of the month, so weekday selection only applies to the other two.
+  const supportsDaysOfWeek = frequency === "daily" || frequency === "weekly";
+
   function toggleDay(day: DayOfWeek) {
     setDaysOfWeek((days) => (days.includes(day) ? days.filter((d) => d !== day) : [...days, day]));
   }
@@ -51,7 +55,7 @@ export function ChoreForm({
       startDate,
       frequency: repeatMode === "schedule" ? frequency : undefined,
       interval: repeatMode === "schedule" ? interval : undefined,
-      daysOfWeek: repeatMode === "schedule" && frequency === "weekly" ? daysOfWeek : undefined,
+      daysOfWeek: repeatMode === "schedule" && supportsDaysOfWeek ? daysOfWeek : undefined,
       endDate: repeatMode === "schedule" && endDate ? endDate : undefined,
       delayDays: repeatMode === "after_completion" ? delayDays : undefined,
       nextDueDate: repeatMode === "after_completion" ? startDate : undefined,
@@ -62,7 +66,7 @@ export function ChoreForm({
     } catch {
       return [];
     }
-  }, [title, assigneeId, stars, timeOfDay, repeatMode, startDate, frequency, interval, daysOfWeek, endDate, delayDays]);
+  }, [title, assigneeId, stars, timeOfDay, repeatMode, startDate, frequency, interval, daysOfWeek, endDate, delayDays, supportsDaysOfWeek]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,7 +90,7 @@ export function ChoreForm({
         startDate,
         frequency: repeatMode === "schedule" ? frequency : undefined,
         interval: repeatMode === "schedule" ? interval : undefined,
-        daysOfWeek: repeatMode === "schedule" && frequency === "weekly" ? daysOfWeek : undefined,
+        daysOfWeek: repeatMode === "schedule" && supportsDaysOfWeek ? daysOfWeek : undefined,
         endDate: repeatMode === "schedule" && endDate ? endDate : undefined,
         delayDays: repeatMode === "after_completion" ? delayDays : undefined,
       });
@@ -208,20 +212,51 @@ export function ChoreForm({
             </label>
           </div>
 
-          {frequency === "weekly" && (
-            <div className="flex flex-wrap gap-2">
-              {DAYS.map((day) => (
+          {supportsDaysOfWeek && (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-text-muted">Repeats on</span>
                 <button
-                  key={day}
                   type="button"
-                  onClick={() => toggleDay(day)}
-                  className={`h-10 w-10 rounded-full text-sm font-bold ${
-                    daysOfWeek.includes(day) ? "bg-text text-bg" : "bg-surface text-text-muted"
-                  }`}
+                  onClick={() => setDaysOfWeek(daysOfWeek.length === WEEKDAYS.length && WEEKDAYS.every((d) => daysOfWeek.includes(d)) ? [] : [...WEEKDAYS])}
+                  className="h-8 rounded-full bg-surface px-3 text-xs font-bold text-text-muted"
                 >
-                  {day}
+                  Weekdays
                 </button>
-              ))}
+                {daysOfWeek.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setDaysOfWeek([])}
+                    className="h-8 rounded-full bg-surface px-3 text-xs font-bold text-text-muted"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {DAYS.map((day) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => toggleDay(day)}
+                    aria-pressed={daysOfWeek.includes(day)}
+                    className={`h-10 w-10 rounded-full text-sm font-bold ${
+                      daysOfWeek.includes(day) ? "bg-text text-bg" : "bg-surface text-text-muted"
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-text-muted">
+                {daysOfWeek.length === 0
+                  ? frequency === "daily"
+                    ? "No days picked — repeats every day."
+                    : "No days picked — repeats on the weekday of the start date."
+                  : frequency === "daily"
+                    ? "Only repeats on the picked days."
+                    : "Repeats on the picked days each scheduled week."}
+              </p>
             </div>
           )}
 

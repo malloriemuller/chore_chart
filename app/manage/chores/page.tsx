@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Copy, Pencil, Plus, SlidersHorizontal } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, ChevronRight, Copy, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
@@ -47,7 +47,7 @@ function repeatFields(choice: RepeatChoice, startDate: string): RepeatFields {
 function repeatSummary(chore: Chore): string {
   if (chore.repeatMode === "none") return `Once, ${chore.startDate}`;
   if (chore.repeatMode === "after_completion") return `Again ${chore.delayDays ?? 0}d after done`;
-  if (chore.frequency === "weekly" && chore.daysOfWeek?.length) {
+  if ((chore.frequency === "weekly" || chore.frequency === "daily") && chore.daysOfWeek?.length) {
     return chore.daysOfWeek.join(" ");
   }
   const unit = chore.frequency === "daily" ? "day" : chore.frequency === "weekly" ? "week" : "month";
@@ -65,6 +65,9 @@ export default function ChoresPage() {
   const [title, setTitle] = useState("");
   const [adding, setAdding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  // Holds the id awaiting a second tap, so a delete always takes two deliberate presses.
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
   const profiles = (profilesData?.profiles ?? []).filter((p) => p.active);
   const profileName = (id: string) => profiles.find((p) => p.id === id)?.name ?? "—";
@@ -79,6 +82,8 @@ export default function ChoresPage() {
       (selected === "all" || c.assigneeId === selected) &&
       (repeatFilter === "all" || c.repeatMode === repeatFilter),
   );
+  const activeChores = chores.filter((c) => !c.archived);
+  const archivedChores = chores.filter((c) => c.archived);
 
   const existingTitles = new Set(
     allChores.filter((c) => c.assigneeId === selected && !c.archived).map((c) => c.title.toLowerCase()),
@@ -165,6 +170,90 @@ export default function ChoresPage() {
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Couldn't update that chore.");
     }
+  }
+
+  async function destroy(chore: Chore) {
+    setActionError(null);
+    setConfirmingDeleteId(null);
+    try {
+      await apiFetch(`/api/manage/chores/${chore.id}`, { method: "DELETE" });
+      await mutate();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't delete that chore.");
+    }
+  }
+
+  function renderRow(chore: Chore) {
+    const confirming = confirmingDeleteId === chore.id;
+    return (
+      <div
+        key={chore.id}
+        className={`flex items-center gap-3 rounded-card bg-surface p-3 shadow-card ${chore.archived ? "opacity-60" : ""}`}
+      >
+        {chore.emoji && <span className="text-2xl">{chore.emoji}</span>}
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-bold">{chore.title}</p>
+          <p className="text-sm text-text-muted">
+            {selected === "all" ? `${profileName(chore.assigneeId)} · ` : ""}
+            {repeatSummary(chore)} · {chore.stars}★
+          </p>
+        </div>
+
+        {confirming ? (
+          <>
+            <span className="text-sm font-bold text-danger">Delete forever?</span>
+            <button
+              type="button"
+              onClick={() => destroy(chore)}
+              className="h-10 rounded-full bg-danger px-4 text-sm font-bold text-white"
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDeleteId(null)}
+              className="h-10 rounded-full bg-surface-2 px-4 text-sm font-bold text-text-muted"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <Link
+              href={`/manage/chores/${chore.id}`}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2"
+              aria-label="Edit"
+            >
+              <Pencil size={16} />
+            </Link>
+            <button
+              type="button"
+              onClick={() => duplicate(chore)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2"
+              aria-label="Duplicate"
+            >
+              <Copy size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleArchived(chore)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2"
+              aria-label={chore.archived ? "Unarchive" : "Archive"}
+            >
+              {chore.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDeleteId(chore.id)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-danger"
+              aria-label="Delete"
+            >
+              <Trash2 size={16} />
+            </button>
+          </>
+        )}
+      </div>
+    );
   }
 
   if (error) return <ErrorState message="Couldn't load chores." onRetry={() => mutate()} />;
@@ -285,55 +374,33 @@ export default function ChoresPage() {
           <option value="after_completion">After completion</option>
         </select>
         <span className="text-sm text-text-muted">
-          {chores.length} chore{chores.length === 1 ? "" : "s"}
+          {activeChores.length} chore{activeChores.length === 1 ? "" : "s"}
         </span>
       </div>
 
       <div className="flex flex-col gap-2">
-        {chores.map((chore) => (
-          <div
-            key={chore.id}
-            className={`flex items-center gap-3 rounded-card bg-surface p-3 shadow-card ${chore.archived ? "opacity-50" : ""}`}
-          >
-            {chore.emoji && <span className="text-2xl">{chore.emoji}</span>}
-            <div className="min-w-0 flex-1">
-              <p className="text-lg font-bold">{chore.title}</p>
-              <p className="text-sm text-text-muted">
-                {selected === "all" ? `${profileName(chore.assigneeId)} · ` : ""}
-                {repeatSummary(chore)} · {chore.stars}★
-              </p>
-            </div>
-            <Link
-              href={`/manage/chores/${chore.id}`}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2"
-              aria-label="Edit"
-            >
-              <Pencil size={16} />
-            </Link>
-            <button
-              type="button"
-              onClick={() => duplicate(chore)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2"
-              aria-label="Duplicate"
-            >
-              <Copy size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleArchived(chore)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2"
-              aria-label={chore.archived ? "Unarchive" : "Archive"}
-            >
-              <Archive size={16} />
-            </button>
-          </div>
-        ))}
-        {chores.length === 0 && (
+        {activeChores.map(renderRow)}
+        {activeChores.length === 0 && (
           <p className="text-text-muted">
             {targetProfile ? `No chores for ${targetProfile.name} yet.` : "No chores match these filters."}
           </p>
         )}
       </div>
+
+      {archivedChores.length > 0 && (
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
+          <button
+            type="button"
+            onClick={() => setShowArchived(!showArchived)}
+            aria-expanded={showArchived}
+            className="flex h-11 items-center gap-2 self-start rounded-full px-2 text-sm font-bold uppercase tracking-[0.06em] text-text-muted"
+          >
+            {showArchived ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            Archived ({archivedChores.length})
+          </button>
+          {showArchived && archivedChores.map(renderRow)}
+        </div>
+      )}
     </div>
   );
 }

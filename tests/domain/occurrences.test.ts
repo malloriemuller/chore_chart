@@ -73,6 +73,62 @@ describe("generateOccurrences: schedule daily", () => {
   });
 });
 
+describe("generateOccurrences: schedule daily with DaysOfWeek", () => {
+  it("only lands on the selected weekdays", () => {
+    const chore = baseChore({
+      repeatMode: "schedule",
+      frequency: "daily",
+      interval: 1,
+      startDate: "2026-01-01", // a Thursday
+      daysOfWeek: ["MO", "TU", "WE", "TH", "FR"],
+    });
+    expect(generateOccurrences(chore, "2026-01-01", "2026-01-11")).toEqual([
+      "2026-01-01", // Thu
+      "2026-01-02", // Fri
+      // 01-03 Sat and 01-04 Sun skipped
+      "2026-01-05", // Mon
+      "2026-01-06", // Tue
+      "2026-01-07", // Wed
+      "2026-01-08", // Thu
+      "2026-01-09", // Fri
+      // 01-10 Sat and 01-11 Sun skipped
+    ]);
+  });
+
+  it("repeats every day when DaysOfWeek is empty", () => {
+    const chore = baseChore({
+      repeatMode: "schedule",
+      frequency: "daily",
+      interval: 1,
+      startDate: "2026-01-01",
+      daysOfWeek: [],
+    });
+    expect(generateOccurrences(chore, "2026-01-01", "2026-01-04")).toEqual([
+      "2026-01-01",
+      "2026-01-02",
+      "2026-01-03",
+      "2026-01-04",
+    ]);
+  });
+
+  it("applies Interval and the weekday filter together", () => {
+    const chore = baseChore({
+      repeatMode: "schedule",
+      frequency: "daily",
+      interval: 2, // every other day from Thu 01-01
+      startDate: "2026-01-01",
+      daysOfWeek: ["MO", "TU", "WE", "TH", "FR"],
+    });
+    // Every-other-day hits 01, 03, 05, 07, 09, 11; weekends (03, 11) drop out.
+    expect(generateOccurrences(chore, "2026-01-01", "2026-01-11")).toEqual([
+      "2026-01-01", // Thu
+      "2026-01-05", // Mon
+      "2026-01-07", // Wed
+      "2026-01-09", // Fri
+    ]);
+  });
+});
+
 describe("generateOccurrences: schedule weekly", () => {
   it("every week on each selected day", () => {
     const chore = baseChore({
