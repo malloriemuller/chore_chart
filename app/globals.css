@@ -1,26 +1,120 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Palette, light mode */
+  --bg: #f7f3ec;
+  --surface: #ffffff;
+  --surface-2: #efe9df;
+  --text: #2e2a25;
+  --text-muted: #7a7167;
+  --line: #e4dccf;
+  --star: #e8a93b;
+  --danger: #c8553d;
+  --success: #5b9a6b;
+  --card-border-color: transparent;
+  --card-shadow: 0 1px 2px rgba(46, 42, 37, 0.06), 0 4px 12px rgba(46, 42, 37, 0.06);
+
+  /* Profile preset palette (section 10a) */
+  --profile-sage: #8db596;
+  --profile-sky: #7fb2d9;
+  --profile-clay: #d98e6c;
+  --profile-lilac: #a993cf;
+  --profile-butter: #e6c565;
+  --profile-rose: #d98ba0;
+  --profile-teal: #5fa8a0;
+  --profile-slate: #8a94a6;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-line: var(--line);
+  --color-star: var(--star);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+
+  --color-profile-sage: var(--profile-sage);
+  --color-profile-sky: var(--profile-sky);
+  --color-profile-clay: var(--profile-clay);
+  --color-profile-lilac: var(--profile-lilac);
+  --color-profile-butter: var(--profile-butter);
+  --color-profile-rose: var(--profile-rose);
+  --color-profile-teal: var(--profile-teal);
+  --color-profile-slate: var(--profile-slate);
+
+  --radius-column: 24px;
+  --radius-card: 16px;
+
+  --shadow-card: var(--card-shadow);
+
+  --font-sans: var(--font-nunito), ui-rounded, system-ui, sans-serif;
+
+  --animate-checkbox-spring: checkbox-spring 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-count-up: count-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-pulse-gentle: pulse-gentle 6s ease-in-out infinite;
+  --animate-confetti: confetti-burst 700ms ease-out forwards;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.4);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-gentle {
+  0%,
+  92%,
+  100% {
+    transform: scale(1);
+  }
+  96% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes checkbox-spring {
+  0% {
+    transform: scale(0.8);
+  }
+  60% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes count-up {
+  0% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

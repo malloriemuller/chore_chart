@@ -1,69 +1,141 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import useSWR from "swr";
+import { BoardSkeleton } from "@/components/BoardSkeleton";
+import { ErrorState } from "@/components/ErrorState";
+import { ProfileColumn } from "@/components/ProfileColumn";
+import { TabBar } from "@/components/TabBar";
+import { Toast } from "@/components/Toast";
+import { groupBoardForProfile } from "@/lib/client/boardGrouping";
+import { fetcher } from "@/lib/client/fetcher";
+import { useChoreCompletion } from "@/lib/client/useChoreCompletion";
+import { addCalendarDays, formatLocalDate, parseLocalDate } from "@/lib/domain/dates";
+import { useClientGuessDate } from "@/lib/hooks/useClientGuessDate";
+import { useKioskMode } from "@/lib/hooks/useKioskMode";
+import { useOnlineStatus } from "@/lib/hooks/useOnlineStatus";
+import type { BoardResponse } from "@/lib/server/board";
+
+const POLL_INTERVAL_MS = 15_000;
+
+function formatHeaderDate(viewDate: string): string {
+  const date = parseLocalDate(viewDate);
+  return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+
+function formatOverdueLabel(occurrenceDate: string): string {
+  return parseLocalDate(occurrenceDate).toLocaleDateString(undefined, { weekday: "short" });
+}
+
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+export default function TodayPage() {
+  // null = auto-follow the household's real "today" (and its midnight rollover); a date = the
+  // user explicitly navigated, which stops following until they tap "Today" again.
+  const [manualViewDate, setManualViewDate] = useState<string | null>(null);
+  // Null only for the instant before hydration settles, so SSR never renders a guessed date that
+  // could disagree with the server's own timezone.
+  const clientGuessDate = useClientGuessDate();
+  const [kiosk] = useKioskMode();
+  const online = useOnlineStatus();
+
+  const boundDate = manualViewDate ?? clientGuessDate;
+  const key = boundDate ? `/api/board?start=${boundDate}&end=${boundDate}` : null;
+  const { data, error: boardError, mutate } = useSWR<BoardResponse>(key, fetcher, {
+    refreshInterval: POLL_INTERVAL_MS,
+    revalidateOnFocus: true,
+  });
+
+  const { pendingUndo, handleToggle, handleUndo, error: mutationError } = useChoreCompletion(data, mutate);
+
+  const viewDate = manualViewDate ?? data?.today ?? clientGuessDate;
+
+  function goToDay(offset: number) {
+    if (!viewDate) return;
+    setManualViewDate(formatLocalDate(addCalendarDays(parseLocalDate(viewDate), offset)));
+  }
+
+  function goToToday() {
+    setManualViewDate(null);
+  }
+
+  const weekHref = data?.profiles[0] ? `/week/${data.profiles[0].id}` : "/manage";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="flex flex-1 flex-col gap-6 p-4 pb-28 sm:p-8">
+      <header className="flex items-center justify-between gap-4">
+        <div>
+          {kiosk && <p className="text-lg font-semibold text-text-muted">{greeting()}</p>}
+          <h1 className="text-[32px] font-extrabold">{viewDate && formatHeaderDate(viewDate)}</h1>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => goToDay(-1)}
+            aria-label="Previous day"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+            <ChevronLeft />
+          </button>
+          <button
+            type="button"
+            onClick={goToToday}
+            className="h-14 rounded-full bg-surface-2 px-5 text-lg font-bold"
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => goToDay(1)}
+            aria-label="Next day"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2"
+          >
+            <ChevronRight />
+          </button>
+        </div>
+      </header>
+
+      {boardError ? (
+        <ErrorState message="Couldn't load today's board." onRetry={() => mutate()} />
+      ) : !data ? (
+        <BoardSkeleton />
+      ) : data.profiles.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+          <p className="text-lg text-text-muted">No one&apos;s set up yet.</p>
+          <Link href="/manage/profiles" className="rounded-full bg-surface-2 px-5 py-3 text-lg font-bold">
+            Add a profile
+          </Link>
+        </div>
+      ) : (
+        <div className={`flex flex-1 gap-4 overflow-x-auto snap-x pb-4 ${kiosk ? "mx-auto w-full max-w-[1366px]" : ""}`}>
+          {data.profiles.map((profile) => (
+            <ProfileColumn
+              key={profile.id}
+              profile={profile}
+              board={groupBoardForProfile(profile.id, data.occurrences, data.chores)}
+              balance={data.balances[profile.id] ?? 0}
+              overdueDateLabel={formatOverdueLabel}
+              onToggle={handleToggle}
+              online={online}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          ))}
         </div>
-      </main>
-    </div>
+      )}
+
+      <TabBar weekHref={weekHref} />
+
+      {mutationError ? (
+        <Toast message={mutationError} />
+      ) : (
+        pendingUndo && <Toast message={`${pendingUndo.message} done!`} actionLabel="Undo" onAction={handleUndo} />
+      )}
+    </main>
   );
 }
