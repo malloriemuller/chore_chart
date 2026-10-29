@@ -53,7 +53,14 @@ export default function TodayPage() {
     revalidateOnFocus: true,
   });
 
-  const { pendingUndo, handleToggle, handleUndo, error: mutationError } = useChoreCompletion(data, mutate);
+  const {
+    pendingUndo,
+    handleToggle,
+    handleDismiss,
+    handleClearOverdue,
+    handleUndo,
+    error: mutationError,
+  } = useChoreCompletion(data, mutate);
 
   const viewDate = manualViewDate ?? data?.today ?? clientGuessDate;
 
@@ -123,6 +130,8 @@ export default function TodayPage() {
               balance={data.balances[profile.id] ?? 0}
               overdueDateLabel={formatOverdueLabel}
               onToggle={handleToggle}
+              onDismiss={handleDismiss}
+              onClearOverdue={() => handleClearOverdue(profile.id)}
               online={online}
             />
           ))}
@@ -134,7 +143,7 @@ export default function TodayPage() {
       {mutationError ? (
         <Toast message={mutationError} />
       ) : (
-        pendingUndo && <Toast message={`${pendingUndo.message} done!`} actionLabel="Undo" onAction={handleUndo} />
+        pendingUndo && <Toast message={pendingUndo.message} actionLabel="Undo" onAction={handleUndo} />
       )}
     </main>
   );

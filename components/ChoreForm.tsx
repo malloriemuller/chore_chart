@@ -33,6 +33,7 @@ export function ChoreForm({
   const [daysOfWeek, setDaysOfWeek] = useState<DayOfWeek[]>(initial?.daysOfWeek ?? []);
   const [endDate, setEndDate] = useState(initial?.endDate ?? "");
   const [delayDays, setDelayDays] = useState(initial?.delayDays ?? 0);
+  const [carryOver, setCarryOver] = useState(initial?.carryOver ?? false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -58,6 +59,7 @@ export function ChoreForm({
       daysOfWeek: repeatMode === "schedule" && supportsDaysOfWeek ? daysOfWeek : undefined,
       endDate: repeatMode === "schedule" && endDate ? endDate : undefined,
       delayDays: repeatMode === "after_completion" ? delayDays : undefined,
+      carryOver: repeatMode === "schedule" ? carryOver : undefined,
       nextDueDate: repeatMode === "after_completion" ? startDate : undefined,
       archived: false,
     };
@@ -66,7 +68,7 @@ export function ChoreForm({
     } catch {
       return [];
     }
-  }, [title, assigneeId, stars, timeOfDay, repeatMode, startDate, frequency, interval, daysOfWeek, endDate, delayDays, supportsDaysOfWeek]);
+  }, [title, assigneeId, stars, timeOfDay, repeatMode, startDate, frequency, interval, daysOfWeek, endDate, delayDays, carryOver, supportsDaysOfWeek]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -93,6 +95,7 @@ export function ChoreForm({
         daysOfWeek: repeatMode === "schedule" && supportsDaysOfWeek ? daysOfWeek : undefined,
         endDate: repeatMode === "schedule" && endDate ? endDate : undefined,
         delayDays: repeatMode === "after_completion" ? delayDays : undefined,
+        carryOver: repeatMode === "schedule" ? carryOver : undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save that chore.");
@@ -259,6 +262,23 @@ export function ChoreForm({
               </p>
             </div>
           )}
+
+          <label className="flex items-start gap-3 border-t border-line pt-3">
+            <input
+              type="checkbox"
+              checked={carryOver}
+              onChange={(e) => setCarryOver(e.target.checked)}
+              className="mt-1 h-5 w-5 shrink-0"
+            />
+            <span>
+              <span className="font-bold">Carry over if missed</span>
+              <span className="block text-sm text-text-muted">
+                {carryOver
+                  ? "A missed day stays on the board as overdue until it's checked off."
+                  : "A missed day is skipped — the chore comes back on its next scheduled day."}
+              </span>
+            </span>
+          </label>
 
           <label className="flex items-center gap-3">
             Ends on (optional)

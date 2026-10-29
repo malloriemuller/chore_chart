@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { canUndo, completeOccurrence, nextDueDateAfterCompletion } from "../../lib/domain/completions";
+import {
+  canUndo,
+  completeOccurrence,
+  dismissOccurrence,
+  nextDueDateAfterCompletion,
+} from "../../lib/domain/completions";
 import type { Chore, Completion } from "../../lib/domain/types";
 
 function baseChore(overrides: Partial<Chore>): Chore {
@@ -63,6 +68,7 @@ describe("completeOccurrence", () => {
       occurrenceDate: "2026-01-01",
       completedDate: "2026-01-01",
       starsAwarded: 7,
+      dismissed: false,
     };
     const result = completeOccurrence({
       chore,
@@ -85,6 +91,7 @@ describe("completeOccurrence", () => {
       occurrenceDate: "2026-01-01",
       completedDate: "2026-01-01",
       starsAwarded: 5,
+      dismissed: false,
     };
     const chore = baseChore({ stars: 50, startDate: "2026-01-02" });
     const result = completeOccurrence({
@@ -97,6 +104,69 @@ describe("completeOccurrence", () => {
     });
     expect(original.starsAwarded).toBe(5);
     expect(result.completion.starsAwarded).toBe(50);
+  });
+});
+
+describe("dismissOccurrence", () => {
+  it("settles the occurrence for no stars and marks it dismissed", () => {
+    const chore = baseChore({ stars: 7 });
+    const result = dismissOccurrence({
+      chore,
+      profileId: "profile-1",
+      occurrenceDate: "2026-01-01",
+      today: "2026-01-03",
+      existingCompletions: [],
+      newId,
+    });
+    expect(result.alreadyCompleted).toBe(false);
+    expect(result.completion.starsAwarded).toBe(0);
+    expect(result.completion.dismissed).toBe(true);
+    // The record is still for the day it was due, written on the day it was waved off.
+    expect(result.completion.occurrenceDate).toBe("2026-01-01");
+    expect(result.completion.completedDate).toBe("2026-01-03");
+  });
+
+  it("restarts an after_completion chore's clock instead of retiring it", () => {
+    const chore = baseChore({
+      repeatMode: "after_completion",
+      delayDays: 3,
+      startDate: "2026-01-01",
+      nextDueDate: "2026-01-01",
+    });
+    const result = dismissOccurrence({
+      chore,
+      profileId: "profile-1",
+      occurrenceDate: "2026-01-01",
+      today: "2026-01-05",
+      existingCompletions: [],
+      newId,
+    });
+    expect(result.previousNextDueDate).toBe("2026-01-01");
+    expect(result.nextNextDueDate).toBe("2026-01-08");
+  });
+
+  it("leaves an already-completed occurrence, and its stars, alone", () => {
+    const chore = baseChore({ stars: 7 });
+    const existing: Completion = {
+      id: "existing",
+      key: "chore-1:2026-01-01",
+      choreId: "chore-1",
+      profileId: "profile-1",
+      occurrenceDate: "2026-01-01",
+      completedDate: "2026-01-01",
+      starsAwarded: 7,
+      dismissed: false,
+    };
+    const result = dismissOccurrence({
+      chore,
+      profileId: "profile-1",
+      occurrenceDate: "2026-01-01",
+      today: "2026-01-02",
+      existingCompletions: [existing],
+      newId,
+    });
+    expect(result.alreadyCompleted).toBe(true);
+    expect(result.completion).toBe(existing);
   });
 });
 
@@ -151,6 +221,7 @@ describe("canUndo", () => {
       occurrenceDate: "2026-01-01",
       completedDate: "2026-01-05",
       starsAwarded: 5,
+      dismissed: false,
     };
     expect(canUndo(completion, "2026-01-05")).toBe(true);
     expect(canUndo(completion, "2026-01-06")).toBe(false);

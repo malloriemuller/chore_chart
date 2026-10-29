@@ -62,7 +62,10 @@ export function WeekView({
     revalidateOnFocus: true,
   });
 
-  const { pendingUndo, handleToggle, handleUndo, error: mutationError } = useChoreCompletion(data, mutate);
+  const { pendingUndo, handleToggle, handleDismiss, handleUndo, error: mutationError } = useChoreCompletion(
+    data,
+    mutate,
+  );
 
   const effectiveWeekStart = manualWeekStart ?? (data ? sundayOf(data.today) : keyWeekStart);
   const effectiveWeekDates =
@@ -182,6 +185,8 @@ export function WeekView({
                     dueTime={chore.dueTime}
                     stars={chore.stars}
                     done={occurrence.status === "done"}
+                    missed={occurrence.status === "missed"}
+                    dismissed={occurrence.status === "dismissed"}
                     interactive={(occurrence.status === "due" || occurrence.status === "overdue") && online}
                     overdueLabel={
                       occurrence.status === "overdue" ? formatOverdueLabel(occurrence.occurrenceDate) : undefined
@@ -193,6 +198,7 @@ export function WeekView({
                         occurrence.status === "overdue" ? "overdue" : "due",
                       )
                     }
+                    onDismiss={() => handleDismiss(chore.id, occurrence.occurrenceDate)}
                   />
                 ))}
               </div>
@@ -206,7 +212,7 @@ export function WeekView({
       {mutationError ? (
         <Toast message={mutationError} />
       ) : (
-        pendingUndo && <Toast message={`${pendingUndo.message} done!`} actionLabel="Undo" onAction={handleUndo} />
+        pendingUndo && <Toast message={pendingUndo.message} actionLabel="Undo" onAction={handleUndo} />
       )}
     </main>
   );

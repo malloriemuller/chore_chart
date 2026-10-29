@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  bonusToDomain,
+  bonusToFields,
   choreToDomain,
   choreToFields,
   completionToDomain,
   profileToDomain,
   redemptionToDomain,
   rewardToDomain,
+  type BonusFields,
   type ChoreFields,
   type CompletionFields,
   type ProfileFields,
@@ -74,6 +77,7 @@ describe("chore mappers", () => {
       endDate: undefined,
       delayDays: undefined,
       nextDueDate: undefined,
+      carryOver: false,
       archived: false,
     });
   });
@@ -111,7 +115,55 @@ describe("completionToDomain", () => {
       occurrenceDate: "2026-01-01",
       completedDate: "2026-01-02",
       starsAwarded: 2,
+      dismissed: false,
     });
+  });
+
+  it("reads a skipped occurrence as dismissed, and a record predating the field as not", () => {
+    const base = {
+      Key: "recChore1:2026-01-01",
+      Chore: ["recChore1"],
+      Profile: ["recProfile1"],
+      OccurrenceDate: "2026-01-01",
+      CompletedDate: "2026-01-02",
+      StarsAwarded: 0,
+    };
+    const skipped: AirtableRecord<CompletionFields> = {
+      id: "recCompletion2",
+      fields: { ...base, Dismissed: true },
+    };
+    expect(completionToDomain(skipped).dismissed).toBe(true);
+    expect(completionToDomain({ id: "recCompletion3", fields: base }).dismissed).toBe(false);
+  });
+});
+
+describe("bonusToDomain", () => {
+  it("maps a fixture Bonuses record, including a negative amount", () => {
+    const record: AirtableRecord<BonusFields> = {
+      id: "recBonus1",
+      fields: {
+        Label: "Nice to her brother",
+        Profile: ["recProfile1"],
+        Stars: 1,
+        AwardedDate: "2026-10-29",
+      },
+    };
+    expect(bonusToDomain(record)).toEqual({
+      id: "recBonus1",
+      label: "Nice to her brother",
+      profileId: "recProfile1",
+      stars: 1,
+      awardedDate: "2026-10-29",
+    });
+
+    const taken = bonusToDomain({ ...record, fields: { ...record.fields, Stars: -2 } });
+    expect(taken.stars).toBe(-2);
+  });
+
+  it("writes the Profile link as a single-element array", () => {
+    const fields = bonusToFields({ profileId: "recProfile1", stars: 3, label: "Helped with dinner" });
+    expect(fields.Profile).toEqual(["recProfile1"]);
+    expect(fields.Stars).toBe(3);
   });
 });
 

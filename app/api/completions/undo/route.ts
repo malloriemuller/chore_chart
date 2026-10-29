@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { AirtableError } from "@/lib/airtable/client";
-import { deleteCompletion, getCompletionById } from "@/lib/airtable/repositories/completions";
 import { getChore, updateChore } from "@/lib/airtable/repositories/chores";
+import { deleteCompletions, listAllCompletions } from "@/lib/airtable/repositories/completions";
 import { getHouseholdToday } from "@/lib/domain/clock";
 import { canUndo } from "@/lib/domain/completions";
+import type { Completion } from "@/lib/domain/types";
 import { getHouseholdTz } from "@/lib/server/env";
 
-const bodySchema = z.object({
+const entrySchema = z.object({
   completionId: z.string().min(1),
   previousNextDueDate: z
     .string()
@@ -15,33 +15,38 @@ const bodySchema = z.object({
     .optional(),
 });
 
+/** One entry per record to roll back, so undoing a cleared overdue pile is a single request. */
+const bodySchema = z.object({ completions: z.array(entrySchema).min(1).max(100) });
+
 export async function POST(request: NextRequest) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  const { completionId, previousNextDueDate } = parsed.data;
-
-  let completion;
-  try {
-    completion = await getCompletionById(completionId);
-  } catch (error) {
-    if (error instanceof AirtableError && error.status === 404) {
-      return NextResponse.json({ error: "Completion not found." }, { status: 404 });
-    }
-    throw error;
-  }
 
   const today = getHouseholdToday(getHouseholdTz());
-  if (!canUndo(completion, today)) {
-    return NextResponse.json({ error: "Can only undo a completion made today." }, { status: 403 });
+  const byId = new Map((await listAllCompletions()).map((c) => [c.id, c]));
+
+  const resolved: { completion: Completion; previousNextDueDate?: string }[] = [];
+  for (const entry of parsed.data.completions) {
+    const completion = byId.get(entry.completionId);
+    if (!completion) {
+      return NextResponse.json({ error: "Completion not found." }, { status: 404 });
+    }
+    if (!canUndo(completion, today)) {
+      return NextResponse.json({ error: "Can only undo a completion made today." }, { status: 403 });
+    }
+    resolved.push({ completion, previousNextDueDate: entry.previousNextDueDate });
   }
 
-  await deleteCompletion(completionId);
+  await deleteCompletions(resolved.map(({ completion }) => completion.id));
 
-  const chore = await getChore(completion.choreId);
-  if (chore?.repeatMode === "after_completion" && previousNextDueDate) {
-    await updateChore(chore.id, { nextDueDate: previousNextDueDate });
+  for (const { completion, previousNextDueDate } of resolved) {
+    if (!previousNextDueDate) continue;
+    const chore = await getChore(completion.choreId);
+    if (chore?.repeatMode === "after_completion") {
+      await updateChore(chore.id, { nextDueDate: previousNextDueDate });
+    }
   }
 
   return NextResponse.json({ ok: true });

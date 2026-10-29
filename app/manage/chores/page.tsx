@@ -144,6 +144,7 @@ export default function ChoresPage() {
       daysOfWeek: chore.daysOfWeek,
       endDate: chore.endDate,
       delayDays: chore.delayDays,
+      carryOver: chore.carryOver,
     };
     setActionError(null);
     try {

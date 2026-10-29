@@ -2,27 +2,30 @@ import type { Chore, Completion } from "./types";
 import { addCalendarDays, formatLocalDate, parseLocalDate } from "./dates";
 import { completionKey, findCompletion } from "./status";
 
-export interface CompleteOccurrenceResult {
+export interface SettleOccurrenceResult {
   completion: Completion;
-  /** For `after_completion` chores: the chore's `NextDueDate` before this completion, to support undo. */
+  /** For `after_completion` chores: the chore's `NextDueDate` before this record, to support undo. */
   previousNextDueDate?: string;
   /** For `after_completion` chores: the new `NextDueDate` to persist on the chore. */
   nextNextDueDate?: string;
+  /** A record for this chore and date already existed; `completion` is that record, untouched. */
   alreadyCompleted: boolean;
 }
 
-/**
- * Completing an occurrence is idempotent: if a Completion with this Key already
- * exists, it is returned unchanged rather than duplicated.
- */
-export function completeOccurrence(params: {
+export interface SettleOccurrenceParams {
   chore: Chore;
   profileId: string;
   occurrenceDate: string;
   today: string;
   existingCompletions: Completion[];
   newId: () => string;
-}): CompleteOccurrenceResult {
+}
+
+/**
+ * Settling an occurrence is idempotent: if a Completion with this Key already
+ * exists, it is returned unchanged rather than duplicated.
+ */
+function settleOccurrence(params: SettleOccurrenceParams, dismissed: boolean): SettleOccurrenceResult {
   const { chore, profileId, occurrenceDate, today, existingCompletions, newId } = params;
   const existing = findCompletion(chore.id, occurrenceDate, existingCompletions);
   if (existing) {
@@ -36,7 +39,8 @@ export function completeOccurrence(params: {
     profileId,
     occurrenceDate,
     completedDate: today,
-    starsAwarded: chore.stars,
+    starsAwarded: dismissed ? 0 : chore.stars,
+    dismissed,
   };
 
   if (chore.repeatMode === "after_completion") {
@@ -49,6 +53,19 @@ export function completeOccurrence(params: {
   }
 
   return { completion, alreadyCompleted: false };
+}
+
+export function completeOccurrence(params: SettleOccurrenceParams): SettleOccurrenceResult {
+  return settleOccurrence(params, false);
+}
+
+/**
+ * Waves an occurrence off: it stops being due or overdue and earns no stars. An
+ * `after_completion` chore still gets its clock restarted from today, so dismissing today's
+ * "water the plants" brings it back in `delayDays`, rather than retiring it for good.
+ */
+export function dismissOccurrence(params: SettleOccurrenceParams): SettleOccurrenceResult {
+  return settleOccurrence(params, true);
 }
 
 export function nextDueDateAfterCompletion(chore: Chore, completedDate: string): string {

@@ -1,24 +1,23 @@
-import type { Completion, Redemption } from "./types";
+import type { Bonus, Completion, Redemption } from "./types";
 
-export function computeBalance(
-  profileId: string,
-  completions: Completion[],
-  redemptions: Redemption[],
-): number {
-  const earned = completions
-    .filter((c) => c.profileId === profileId)
-    .reduce((sum, c) => sum + c.starsAwarded, 0);
-  const spent = redemptions
-    .filter((r) => r.profileId === profileId)
-    .reduce((sum, r) => sum + r.cost, 0);
-  return earned - spent;
+/** Everything that moves a child's star balance. Passed whole so no source is accidentally left out. */
+export interface StarLedger {
+  completions: Completion[];
+  redemptions: Redemption[];
+  bonuses: Bonus[];
 }
 
-export function canRedeem(
-  profileId: string,
-  cost: number,
-  completions: Completion[],
-  redemptions: Redemption[],
-): boolean {
-  return computeBalance(profileId, completions, redemptions) >= cost;
+export function computeBalance(profileId: string, ledger: StarLedger): number {
+  const mine = <T extends { profileId: string }>(rows: T[]) => rows.filter((r) => r.profileId === profileId);
+
+  const earned = mine(ledger.completions).reduce((sum, c) => sum + c.starsAwarded, 0);
+  // Bonuses can be negative, which is how stars are taken back or a mistake is corrected.
+  const given = mine(ledger.bonuses).reduce((sum, b) => sum + b.stars, 0);
+  const spent = mine(ledger.redemptions).reduce((sum, r) => sum + r.cost, 0);
+
+  return earned + given - spent;
+}
+
+export function canRedeem(profileId: string, cost: number, ledger: StarLedger): boolean {
+  return computeBalance(profileId, ledger) >= cost;
 }

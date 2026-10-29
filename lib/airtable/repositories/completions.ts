@@ -35,12 +35,25 @@ export async function findCompletionByKey(key: string): Promise<Completion | und
 }
 
 export async function createCompletion(input: Omit<Completion, "id">): Promise<Completion> {
-  const [record] = await createRecords<CompletionFields>(TABLE, [
-    { fields: completionToFields(input) as CompletionFields },
-  ]);
-  return completionToDomain(record);
+  const [completion] = await createCompletions([input]);
+  return completion;
+}
+
+/** Batched by the client in chunks of 10, so a whole overdue pile goes up in one or two requests. */
+export async function createCompletions(inputs: Omit<Completion, "id">[]): Promise<Completion[]> {
+  if (inputs.length === 0) return [];
+  const records = await createRecords<CompletionFields>(
+    TABLE,
+    inputs.map((input) => ({ fields: completionToFields(input) as CompletionFields })),
+  );
+  return records.map(completionToDomain);
 }
 
 export async function deleteCompletion(id: string): Promise<void> {
   await deleteRecords(TABLE, [id]);
+}
+
+export async function deleteCompletions(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await deleteRecords(TABLE, ids);
 }

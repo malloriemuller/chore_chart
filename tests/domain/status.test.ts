@@ -25,31 +25,64 @@ function completion(overrides: Partial<Completion>): Completion {
     occurrenceDate: "2026-01-01",
     completedDate: "2026-01-01",
     starsAwarded: 1,
+    dismissed: false,
     ...overrides,
   };
 }
 
 describe("statusForOccurrence", () => {
   it("is done when completed, regardless of date", () => {
-    expect(statusForOccurrence("2026-01-01", "2026-06-01", true)).toBe("done");
+    expect(statusForOccurrence("2026-01-01", "2026-06-01", completion({}))).toBe("done");
+  });
+  it("is dismissed when the record is a skip rather than a completion", () => {
+    const skip = completion({ starsAwarded: 0, dismissed: true });
+    expect(statusForOccurrence("2026-01-01", "2026-06-01", skip)).toBe("dismissed");
   });
   it("is due when the occurrence date is today", () => {
-    expect(statusForOccurrence("2026-06-01", "2026-06-01", false)).toBe("due");
+    expect(statusForOccurrence("2026-06-01", "2026-06-01", undefined)).toBe("due");
   });
   it("is upcoming when the occurrence date is after today", () => {
-    expect(statusForOccurrence("2026-06-02", "2026-06-01", false)).toBe("upcoming");
+    expect(statusForOccurrence("2026-06-02", "2026-06-01", undefined)).toBe("upcoming");
   });
-  it("is overdue when the occurrence date is before today and incomplete", () => {
-    expect(statusForOccurrence("2026-05-31", "2026-06-01", false)).toBe("overdue");
+  it("is missed when a past occurrence is incomplete and not carried over", () => {
+    expect(statusForOccurrence("2026-05-31", "2026-06-01", undefined)).toBe("missed");
+  });
+  it("is overdue when that same past occurrence is the carried-over one", () => {
+    expect(statusForOccurrence("2026-05-31", "2026-06-01", undefined, true)).toBe("overdue");
+  });
+  it("stays done even when carried over", () => {
+    expect(statusForOccurrence("2026-05-31", "2026-06-01", completion({}), true)).toBe("done");
+  });
+  it("is dismissed, not overdue, once a carried-over date is skipped", () => {
+    const skip = completion({ occurrenceDate: "2026-05-31", starsAwarded: 0, dismissed: true });
+    expect(statusForOccurrence("2026-05-31", "2026-06-01", skip, true)).toBe("dismissed");
   });
 });
 
-describe("getOverdueOccurrenceDate: schedule", () => {
+describe("getOverdueOccurrenceDate: schedule without CarryOver (the default)", () => {
   const chore = baseChore({
     repeatMode: "schedule",
     frequency: "daily",
     interval: 1,
     startDate: "2026-01-01",
+  });
+
+  it("drops a missed day instead of carrying it forward", () => {
+    expect(getOverdueOccurrenceDate(chore, [], "2026-02-01")).toBeNull();
+  });
+
+  it("drops it whether or not CarryOver is explicitly false", () => {
+    expect(getOverdueOccurrenceDate({ ...chore, carryOver: false }, [], "2026-02-01")).toBeNull();
+  });
+});
+
+describe("getOverdueOccurrenceDate: schedule with CarryOver", () => {
+  const chore = baseChore({
+    repeatMode: "schedule",
+    frequency: "daily",
+    interval: 1,
+    startDate: "2026-01-01",
+    carryOver: true,
   });
 
   it("only looks back 7 days", () => {
@@ -102,6 +135,11 @@ describe("getOverdueOccurrenceDate: none and after_completion persist indefinite
     const completions = [completion({ key: "chore-1:2026-01-01", occurrenceDate: "2026-01-01" })];
     expect(getOverdueOccurrenceDate(chore, completions, "2026-06-01")).toBeNull();
   });
+
+  it("ignores CarryOver: these modes have no next occurrence to fall back to", () => {
+    const chore = baseChore({ repeatMode: "none", startDate: "2026-01-01", carryOver: false });
+    expect(getOverdueOccurrenceDate(chore, [], "2026-06-01")).toBe("2026-01-01");
+  });
 });
 
 describe("late completion keeps its original OccurrenceDate", () => {
@@ -113,6 +151,6 @@ describe("late completion keeps its original OccurrenceDate", () => {
     expect(late.occurrenceDate).toBe("2026-01-01");
     expect(late.completedDate).toBe("2026-01-05");
     // Once completed, status is "done" no matter how late.
-    expect(statusForOccurrence(late.occurrenceDate, "2026-01-05", true)).toBe("done");
+    expect(statusForOccurrence(late.occurrenceDate, "2026-01-05", late)).toBe("done");
   });
 });

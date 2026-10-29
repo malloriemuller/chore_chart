@@ -26,10 +26,16 @@ export interface ProfileBoard {
   sections: ProfileSection[];
 }
 
+/** Done, skipped and missed rows are all inert, so they sink below anything still actionable. */
+function isInert(row: BoardRow): boolean {
+  const { status } = row.occurrence;
+  return status === "done" || status === "dismissed" || status === "missed";
+}
+
 export function sortRows(rows: BoardRow[]): BoardRow[] {
   return [...rows].sort((a, b) => {
-    const aDone = a.occurrence.status === "done";
-    const bDone = b.occurrence.status === "done";
+    const aDone = isInert(a);
+    const bDone = isInert(b);
     if (aDone !== bDone) return aDone ? 1 : -1;
     const timeCompare = (a.chore.dueTime ?? "").localeCompare(b.chore.dueTime ?? "");
     if (timeCompare !== 0) return timeCompare;

@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
     occurrenceDate: result.completion.occurrenceDate,
     completedDate: result.completion.completedDate,
     starsAwarded: result.completion.starsAwarded,
+    dismissed: result.completion.dismissed,
   });
 
   if (chore.repeatMode === "after_completion" && result.nextNextDueDate) {

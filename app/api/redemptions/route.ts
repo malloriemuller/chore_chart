@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { listAllBonuses } from "@/lib/airtable/repositories/bonuses";
 import { listAllCompletions } from "@/lib/airtable/repositories/completions";
 import { getProfile } from "@/lib/airtable/repositories/profiles";
 import { listAllRedemptions, createRedemption } from "@/lib/airtable/repositories/redemptions";
@@ -31,8 +32,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "This reward isn't available to this child." }, { status: 403 });
   }
 
-  const [completions, redemptions] = await Promise.all([listAllCompletions(), listAllRedemptions()]);
-  if (!canRedeem(profileId, reward.cost, completions, redemptions)) {
+  const [completions, redemptions, bonuses] = await Promise.all([
+    listAllCompletions(),
+    listAllRedemptions(),
+    listAllBonuses(),
+  ]);
+  if (!canRedeem(profileId, reward.cost, { completions, redemptions, bonuses })) {
     return NextResponse.json({ error: "Not enough stars." }, { status: 400 });
   }
 

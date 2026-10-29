@@ -66,6 +66,7 @@ const SCHEMA: ExpectedTable[] = [
       { name: "EndDate", type: "singleLineText" },
       { name: "DelayDays", type: "number", integer: true },
       { name: "NextDueDate", type: "singleLineText" },
+      { name: "CarryOver", type: "checkbox" },
       { name: "Archived", type: "checkbox" },
     ],
   },
@@ -78,6 +79,16 @@ const SCHEMA: ExpectedTable[] = [
       { name: "OccurrenceDate", type: "singleLineText" },
       { name: "CompletedDate", type: "singleLineText" },
       { name: "StarsAwarded", type: "number", integer: true },
+      { name: "Dismissed", type: "checkbox" },
+    ],
+  },
+  {
+    name: "Bonuses",
+    fields: [
+      { name: "Label", type: "singleLineText" },
+      { name: "Profile", type: "multipleRecordLinks" },
+      { name: "Stars", type: "number", integer: true },
+      { name: "AwardedDate", type: "singleLineText" },
     ],
   },
   {

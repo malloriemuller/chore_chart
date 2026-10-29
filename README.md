@@ -63,7 +63,19 @@ native Date field type, so time zones can't shift them.
 | Profile | Link to Profiles (single) | |
 | OccurrenceDate | Single line text | `YYYY-MM-DD` |
 | CompletedDate | Single line text | `YYYY-MM-DD` |
-| StarsAwarded | Number (integer) | Frozen at completion time |
+| StarsAwarded | Number (integer) | Frozen at completion time; 0 for a skipped occurrence |
+| Dismissed | Checkbox | The occurrence was skipped on purpose: settled for no stars, and it stops coming back |
+
+### Bonuses
+
+Stars given outside the chore list, e.g. for being kind to a sibling. Awarded from Manage → Stars (parent PIN).
+
+| Field | Type | Notes |
+|---|---|---|
+| Label | Single line text | Primary field. Why the stars were given |
+| Profile | Link to Profiles (single) | |
+| Stars | Number (integer) | Negative takes stars away |
+| AwardedDate | Single line text | `YYYY-MM-DD` |
 
 ### Rewards
 

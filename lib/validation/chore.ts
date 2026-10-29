@@ -17,6 +17,7 @@ export const choreInputSchema = z
     daysOfWeek: z.array(z.enum(["SU", "MO", "TU", "WE", "TH", "FR", "SA"])).optional(),
     endDate: dateString.optional(),
     delayDays: z.number().int().min(0).optional(),
+    carryOver: z.boolean().optional(),
     archived: z.boolean().optional().default(false),
   })
   .superRefine((data, ctx) => {
@@ -52,6 +53,7 @@ export const chorePatchSchema = z.object({
   daysOfWeek: z.array(z.enum(["SU", "MO", "TU", "WE", "TH", "FR", "SA"])).optional(),
   endDate: dateString.optional(),
   delayDays: z.number().int().min(0).optional(),
+  carryOver: z.boolean().optional(),
   nextDueDate: dateString.optional(),
   archived: z.boolean().optional(),
 });

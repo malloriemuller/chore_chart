@@ -1,3 +1,4 @@
+import { listAllBonuses } from "../airtable/repositories/bonuses";
 import { listAllCompletions } from "../airtable/repositories/completions";
 import { listActiveProfiles } from "../airtable/repositories/profiles";
 import { listAllRedemptions } from "../airtable/repositories/redemptions";
@@ -15,18 +16,19 @@ export interface RewardsResponse {
 const RECENT_REDEMPTIONS_LIMIT = 10;
 
 export async function getRewardsData(): Promise<RewardsResponse> {
-  const [profiles, rewards, completions, redemptions] = await Promise.all([
+  const [profiles, rewards, completions, redemptions, bonuses] = await Promise.all([
     listActiveProfiles(),
     listActiveRewards(),
     listAllCompletions(),
     listAllRedemptions(),
+    listAllBonuses(),
   ]);
 
   const children = profiles.filter((p) => p.role === "child");
 
   const balances: Record<string, number> = {};
   for (const child of children) {
-    balances[child.id] = computeBalance(child.id, completions, redemptions);
+    balances[child.id] = computeBalance(child.id, { completions, redemptions, bonuses });
   }
 
   const recentRedemptions = [...redemptions]

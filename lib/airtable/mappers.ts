@@ -1,4 +1,5 @@
 import type {
+  Bonus,
   Chore,
   Completion,
   DayOfWeek,
@@ -37,6 +38,7 @@ export interface ChoreFields {
   EndDate?: string;
   DelayDays?: number;
   NextDueDate?: string;
+  CarryOver?: boolean;
   Archived: boolean;
 }
 
@@ -47,6 +49,7 @@ export interface CompletionFields {
   OccurrenceDate: string;
   CompletedDate: string;
   StarsAwarded: number;
+  Dismissed?: boolean;
 }
 
 export interface RewardFields {
@@ -55,6 +58,13 @@ export interface RewardFields {
   Cost: number;
   Profile?: string[];
   Archived: boolean;
+}
+
+export interface BonusFields {
+  Label: string;
+  Profile: string[];
+  Stars: number;
+  AwardedDate: string;
 }
 
 export interface RedemptionFields {
@@ -108,6 +118,7 @@ export function choreToDomain(record: AirtableRecord<ChoreFields>): Chore {
     endDate: record.fields.EndDate,
     delayDays: record.fields.DelayDays,
     nextDueDate: record.fields.NextDueDate,
+    carryOver: record.fields.CarryOver ?? false,
     archived: record.fields.Archived ?? false,
   };
 }
@@ -128,6 +139,7 @@ export function choreToFields(chore: Partial<Chore>): Partial<ChoreFields> {
   if (chore.endDate !== undefined) fields.EndDate = chore.endDate;
   if (chore.delayDays !== undefined) fields.DelayDays = chore.delayDays;
   if (chore.nextDueDate !== undefined) fields.NextDueDate = chore.nextDueDate;
+  if (chore.carryOver !== undefined) fields.CarryOver = chore.carryOver;
   if (chore.archived !== undefined) fields.Archived = chore.archived;
   return fields;
 }
@@ -141,6 +153,7 @@ export function completionToDomain(record: AirtableRecord<CompletionFields>): Co
     occurrenceDate: record.fields.OccurrenceDate,
     completedDate: record.fields.CompletedDate,
     starsAwarded: record.fields.StarsAwarded ?? 0,
+    dismissed: record.fields.Dismissed ?? false,
   };
 }
 
@@ -152,6 +165,26 @@ export function completionToFields(completion: Partial<Completion>): Partial<Com
   if (completion.occurrenceDate !== undefined) fields.OccurrenceDate = completion.occurrenceDate;
   if (completion.completedDate !== undefined) fields.CompletedDate = completion.completedDate;
   if (completion.starsAwarded !== undefined) fields.StarsAwarded = completion.starsAwarded;
+  if (completion.dismissed !== undefined) fields.Dismissed = completion.dismissed;
+  return fields;
+}
+
+export function bonusToDomain(record: AirtableRecord<BonusFields>): Bonus {
+  return {
+    id: record.id,
+    label: record.fields.Label,
+    profileId: linkId(record.fields.Profile) ?? "",
+    stars: record.fields.Stars ?? 0,
+    awardedDate: record.fields.AwardedDate,
+  };
+}
+
+export function bonusToFields(bonus: Partial<Bonus>): Partial<BonusFields> {
+  const fields: Partial<BonusFields> = {};
+  if (bonus.label !== undefined) fields.Label = bonus.label;
+  if (bonus.profileId !== undefined) fields.Profile = linkField(bonus.profileId);
+  if (bonus.stars !== undefined) fields.Stars = bonus.stars;
+  if (bonus.awardedDate !== undefined) fields.AwardedDate = bonus.awardedDate;
   return fields;
 }
 

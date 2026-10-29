@@ -109,7 +109,16 @@ export default function StyleguidePage() {
         <ProfileColorScope hex="#7FB2D9" className="flex max-w-sm flex-col gap-3">
           <ChoreCard emoji="🍽️" title="Set the table" dueTime="5:30pm" stars={2} done={false} onToggle={() => {}} />
           <ChoreCard emoji="🧹" title="Sweep the kitchen" stars={3} done={true} onToggle={() => {}} />
-          <ChoreCard emoji="🐱" title="Feed the cat" stars={1} done={false} overdueLabel="Tue" onToggle={() => {}} />
+          <ChoreCard
+            emoji="🐱"
+            title="Feed the cat"
+            stars={1}
+            done={false}
+            overdueLabel="Tue"
+            onToggle={() => {}}
+            onDismiss={() => {}}
+          />
+          <ChoreCard emoji="🪴" title="Water the plants" stars={2} done={false} dismissed onToggle={() => {}} />
           <div className="flex items-center gap-3 rounded-card bg-surface p-4 shadow-card">
             <span className="text-lg">Live checkbox:</span>
             <LiveCheckboxDemo />

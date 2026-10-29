@@ -3,7 +3,7 @@ export type TimeOfDay = "morning" | "afternoon" | "evening" | "anytime";
 export type RepeatMode = "none" | "schedule" | "after_completion";
 export type Frequency = "daily" | "weekly" | "monthly";
 export type DayOfWeek = "SU" | "MO" | "TU" | "WE" | "TH" | "FR" | "SA";
-export type OccurrenceStatus = "done" | "due" | "upcoming" | "overdue";
+export type OccurrenceStatus = "done" | "dismissed" | "due" | "upcoming" | "overdue" | "missed";
 
 export interface Profile {
   id: string;
@@ -32,6 +32,12 @@ export interface Chore {
   endDate?: string;
   delayDays?: number;
   nextDueDate?: string;
+  /**
+   * When a scheduled occurrence is missed, whether it follows the kid forward as overdue.
+   * Defaults to false: a recurring chore like brushing teeth is tied to its own day, and a
+   * missed one is simply gone rather than something to catch up on.
+   */
+  carryOver?: boolean;
   archived: boolean;
 }
 
@@ -43,6 +49,12 @@ export interface Completion {
   occurrenceDate: string;
   completedDate: string;
   starsAwarded: number;
+  /**
+   * The occurrence was waved off rather than done: it stops being due or overdue, and
+   * `starsAwarded` is 0. Settling it with a record (instead of deleting the occurrence) is what
+   * keeps a recurring chore's later days intact while this one day stops coming back.
+   */
+  dismissed: boolean;
 }
 
 export interface Reward {
@@ -52,6 +64,20 @@ export interface Reward {
   cost: number;
   profileId?: string;
   archived: boolean;
+}
+
+/**
+ * Stars given (or taken back) outside the chore list — "was kind to her brother" — so one-off
+ * credit doesn't have to be dressed up as a chore nobody wants on the board.
+ */
+export interface Bonus {
+  id: string;
+  /** Why it was given; shown in the stars ledger. */
+  label: string;
+  profileId: string;
+  /** Negative to take stars away, e.g. to correct a mistake. Never 0. */
+  stars: number;
+  awardedDate: string;
 }
 
 export interface Redemption {
